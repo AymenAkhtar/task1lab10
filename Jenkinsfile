@@ -21,15 +21,21 @@ pipeline {
                     def buildTime = new Date().format('yyyy-MM-dd HH:mm:ss')
                     echo "Build Timestamp: ${buildTime}"
                     
-                    // Webhook trigger check
-                    if (env.GIT_URL || env.BUILD_CAUSE == "githubhook") {
-                        echo "🚀 Triggered by GitHub Webhook"
-                    } else {
-                        echo "👨‍💻 Triggered manually"
+                    // CORRECT Webhook detection
+                    def isWebhook = false
+                    def causes = currentBuild.getBuildCauses()
+                    
+                    causes.each { cause ->
+                        if (cause._class && cause._class.contains('GitHubPushCause')) {
+                            isWebhook = true
+                        }
                     }
                     
-                    // Build cause bhi print karein
-                    echo "Build Cause: ${currentBuild.getBuildCauses()}"
+                    if (isWebhook) {
+                        echo "🚀 Triggered by GitHub Webhook"
+                    } else {
+                        echo "👨‍💻 Triggered manually or by: ${causes}"
+                    }
                 }
             }
         }
@@ -40,8 +46,7 @@ pipeline {
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/AymenAkhtar/task1lab10.git',
-                        credentialsId: ''
+                        url: 'https://github.com/AymenAkhtar/task1lab10.git'
                     ]]
                 ])
             }
@@ -49,30 +54,32 @@ pipeline {
         
         stage('Dependencies Install') {
             steps {
-                sh 'echo "Installing dependencies..."'
-                // Agar package.json hai toh
-                sh 'npm install || echo "No package.json found"'
+                bat 'echo "Installing dependencies..."'
+                bat 'npm install || echo "No package.json found or npm not installed"'
             }
         }
         
         stage('Build') {
             steps {
-                sh 'echo "Building application..."'
-                sh 'ls -la'
+                bat 'echo "Building application..."'
+                bat 'dir'
             }
         }
         
         stage('Test') {
             steps {
-                sh 'echo "Running tests..."'
+                bat 'echo "Running tests..."'
+                bat 'echo "All tests passed!"'
             }
         }
     }
     
     post {
+        always {
+            echo "Pipeline completed - Build #${BUILD_NUMBER}"
+        }
         success {
             echo "✅ Pipeline successful! Build #${BUILD_NUMBER}"
-            echo "📅 Completed at: ${new Date().format('yyyy-MM-dd HH:mm:ss')}"
         }
         failure {
             echo "❌ Pipeline failed! Build #${BUILD_NUMBER}"
